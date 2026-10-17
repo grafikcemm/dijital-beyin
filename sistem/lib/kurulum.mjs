@@ -2,10 +2,10 @@
 // Güvenlik modeli docs/SOZLESME.md "Kasa düzeni" tablosudur: kullanıcı
 // dosyalarına asla yazılmaz; ortak dosyalarda yalnız bizim bölümümüz yenilenir.
 import {
-  constants, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync,
+  constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { atomikYaz, sha256, yollar } from './yol.mjs';
+import { atomikYaz, ozyinelemeliKopyala, sha256, yollar } from './yol.mjs';
 
 export const ISTEMCILER = Object.freeze(['claude', 'codex']);
 const MANIFEST_SEMA = 'dijital-beyin.kurulum/v1';
@@ -576,7 +576,7 @@ export function kur({ kaynak, hedef, istemciler, plan = false, simdi, uzerineYaz
   if (cakisanlar.length) {
     const yedekDizin = join(yollar(hedefKok).yedek, `kurulum-oncesi-${zamanEtiketi(simdi)}`);
     mkdirSync(yedekDizin, { recursive: true });
-    for (const ad of cakisanlar) cpSync(join(hedefKok, ad), join(yedekDizin, ad), { recursive: true });
+    for (const ad of cakisanlar) ozyinelemeliKopyala(join(hedefKok, ad), join(yedekDizin, ad));
     uyarilar.push(`kurulum_oncesi_yedek:${ileriEgik(relative(hedefKok, yedekDizin))}`);
   }
   const yazilanlar = [];

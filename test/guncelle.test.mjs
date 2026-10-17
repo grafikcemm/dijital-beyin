@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
-  cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync,
+  existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync,
 } from 'node:fs';
+import { ozyinelemeliKopyala } from '../sistem/lib/yol.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
@@ -662,7 +663,7 @@ test('bağlantı/junction ile kasa dışına yazma ve silme reddedilir', async t
     rmSync(join(kok, 'sistem', 'lib'), { force: true });
     const disSistem = geciciKlasor();
     try {
-      cpSync(join(kok, 'sistem'), disSistem, { recursive: true });
+      ozyinelemeliKopyala(join(kok, 'sistem'), disSistem);
       rmSync(join(kok, 'sistem'), { recursive: true, force: true });
       if (!baglantiKur(t, disSistem, join(kok, 'sistem'))) return;
       const sistemOnce = readFileSync(join(disSistem, 'cli.mjs'), 'utf8');
@@ -718,7 +719,7 @@ function gercekKasaKur() {
 
 function gercekPaketYap(tmp, surum, degistir) {
   const kopya = join(tmp, `kaynak-${surum}`);
-  for (const ad of ['sistem', 'beyin.mjs', 'package.json', 'arac']) cpSync(join(REPO, ad), join(kopya, ad), { recursive: true });
+  for (const ad of ['sistem', 'beyin.mjs', 'package.json', 'arac']) ozyinelemeliKopyala(join(REPO, ad), join(kopya, ad));
   const surumYolu = join(kopya, 'sistem', 'surum.json');
   writeFileSync(surumYolu, `${JSON.stringify({ ...JSON.parse(readFileSync(surumYolu, 'utf8')), surum }, null, 2)}\n`);
   const pj = join(kopya, 'package.json');

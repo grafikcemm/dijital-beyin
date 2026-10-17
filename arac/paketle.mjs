@@ -3,7 +3,7 @@
 // Çıktı: dist/beyin-paket-<sürüm>.json ve dist/beyin-paket-<sürüm>.json.sha256
 // Paket deterministiktir: sıralı yollar, '/' ayraç, sabit "olusturuldu".
 import { execFileSync } from 'node:child_process';
-import { lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atomikYaz, sha256, yonetilenYolMu } from '../sistem/lib/yol.mjs';
@@ -109,6 +109,7 @@ export function main(argv = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+const gercekYol = yol => { try { return realpathSync(yol); } catch { return resolve(yol); } };
+if (process.argv[1] && gercekYol(process.argv[1]).toLowerCase() === gercekYol(fileURLToPath(import.meta.url)).toLowerCase()) {
   process.exitCode = main();
 }

@@ -3,7 +3,7 @@
 // Kural: oturumu asla bloklama. Ağ yok, model yok; hata olursa günlüğe yaz ve 0 ile çık.
 // Tek istisna koruma kancasının bilinçli "deny" kararı.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -120,8 +120,11 @@ export async function kancaCalistir(argv, girdiMetni) {
   return 0;
 }
 
-const buDosya = fileURLToPath(import.meta.url);
-const calisan = process.argv[1] ? resolve(process.argv[1]) : '';
+// Node ana modülün symlink'ini çözer (macOS'ta /var → /private/var, Windows'ta junction);
+// argv[1] ise çözülmemiş kalır. İkisi de gerçek yola çevrilmeden karşılaştırılırsa kanca sessizce ölür.
+const gercekYol = yol => { try { return realpathSync(yol); } catch { return resolve(yol); } };
+const buDosya = gercekYol(fileURLToPath(import.meta.url));
+const calisan = process.argv[1] ? gercekYol(process.argv[1]) : '';
 const dogrudanCalisti = process.platform === 'win32'
   ? buDosya.toLowerCase() === calisan.toLowerCase()
   : buDosya === calisan;
