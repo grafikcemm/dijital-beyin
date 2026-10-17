@@ -130,7 +130,7 @@ async function main(argv) {
       '  3. beynim/ klasöründeki dört dosyayı doldur ya da yapay zekâdan seninle birlikte doldurmasını iste.',
     );
     if (codex) {
-      satirlar.push('  4. Codex için: Codex\'i bu klasörde aç, /hooks yaz ve üç kancaya güven onayı ver. Onay vermezsen kancalar çalışmaz.');
+      satirlar.push('  4. Codex için: Codex\'i bu klasörde aç; klasöre güvenip güvenmediğini sorarsa güven. Sonra /hooks yaz ve üç kancaya güven onayı ver. İkisinden biri eksikse kancalar çalışmaz.');
     }
     satirlar.push(
       '',

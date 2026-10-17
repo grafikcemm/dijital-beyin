@@ -58,8 +58,10 @@ Turkish). Never ask for API keys, tokens or passwords; the kit needs none.
    - Open the vault folder itself in Claude Code (the project root must be
      exactly this folder) and start a **new session**; the start hook only
      runs in new sessions.
-   - For Codex: open the folder, type `/hooks` and trust the three Dijital
-     Beyin hooks. This cannot be skipped by the installer.
+   - For Codex: open the folder and, when Codex asks whether to trust it,
+     trust it (Codex never loads `.codex/` hooks from an untrusted folder).
+     Then type `/hooks` and trust the three Dijital Beyin hooks. The installer
+     cannot skip either step.
    - The four files in `beynim/` are theirs to fill; offer to fill them
      together.
 

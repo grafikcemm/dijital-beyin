@@ -171,8 +171,11 @@ Olaylar: `SessionStart` (matcher `startup|resume|clear|compact`) → `baslangic`
 
 Codex, `.codex/hooks.json` (proje düzeyi; mutlak yol, `onar` yeniden yazar):
 `SessionStart` → `baslangic`, `Stop` → `durdur`, `PreToolUse` → `koruma`.
-Codex her kancayı `/hooks` ekranında kullanıcıya onaylatır; kurucu bunu atlayamaz
-ve belgede açıkça yazar.
+Codex proje kancalarını yalnız güvenilen klasörde (`projects."<yol>".trust_level = "trusted"`)
+yükler ve her kancayı `/hooks` ekranında kullanıcıya onaylatır; kurucu ikisini de
+atlayamaz ve belgede açıkça yazar. Canlı doğrulama (codex-cli 0.159.2, 2026-10-17):
+güvenilmeyen klasörde yalnız kullanıcı kancaları çalıştı; güvenle bağlam, yakalama
+ve koruma kancası çağrıldı.
 
 Bağlam çıktısı: `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}`.
 Ret: `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"…"}}`, çıkış 0.

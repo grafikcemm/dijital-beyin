@@ -125,7 +125,7 @@ function kancaKontrol(durum, istemciler) {
       : {
         ad: 'kanca_codex',
         durum: 'uyari',
-        mesaj: `Codex kancaları eksik${eksikMetni(durum?.codex)}. "node beyin.mjs onar" çalıştır; Codex her kancayı /hooks ekranında senden onay ister.`,
+        mesaj: `Codex kancaları eksik${eksikMetni(durum?.codex)}. "node beyin.mjs onar" çalıştır; Codex klasöre güvenmeni ve her kancayı /hooks ekranında onaylamanı ister.`,
       });
   }
   return sonuc;

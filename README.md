@@ -140,9 +140,14 @@ güvenebilirsin.
 
 ## Codex
 
-Codex her kancayı ilk kez kullanmadan önce senden onay ister. Kurulumdan sonra
-Codex'i kasa klasöründe aç, `/hooks` yaz ve üç kancaya (oturum başı, durma,
-koruma) güven onayı ver. Bu adım atlanamaz; onay vermezsen Codex dosyaları
+Codex iki onay ister ve ikisi de atlanamaz. Kurulumdan sonra Codex'i kasa
+klasöründe aç:
+
+1. Codex klasöre güvenip güvenmediğini sorarsa güven. Güvenilmeyen klasörde
+   Codex `.codex/` altındaki kancaları hiç yüklemez.
+2. `/hooks` yaz ve üç kancaya (oturum başı, durma, koruma) güven onayı ver.
+
+Onay vermezsen Codex dosyaları
 yalnız `AGENTS.md`'deki talimatla, `node beyin.mjs baglam` çalıştırarak okur.
 Kasa klasörünü taşırsan `node beyin.mjs onar` çalıştır; Codex kancaları tam yol
 kullanır.
