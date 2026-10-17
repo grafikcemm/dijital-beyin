@@ -1,8 +1,8 @@
 // Kasa yolları, güvenli yol birleştirme, atomik yazma ve kilit.
 import { createHash, randomBytes } from 'node:crypto';
 import {
-  appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync,
-  renameSync, statSync, unlinkSync, writeFileSync,
+  appendFileSync, closeSync, copyFileSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync,
+  readdirSync, renameSync, statSync, unlinkSync, writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
@@ -83,6 +83,21 @@ function israrliRename(kaynak, hedef) {
       uyu(RENAME_BEKLEME_MS[deneme]);
     }
   }
+}
+
+// fs.cpSync yerine: Node 22 Windows'ta Türkçe karakterli yollarda süreci çökertiyor (0xC0000409).
+// Symlink'ler izlenmez ve kopyalanmaz. filtre(kaynakYol, hedefYol) false dönerse o yol atlanır.
+export function ozyinelemeliKopyala(kaynak, hedef, { filtre } = {}) {
+  if (filtre && !filtre(kaynak, hedef)) return;
+  const bilgi = lstatSync(kaynak);
+  if (bilgi.isSymbolicLink()) return;
+  if (bilgi.isDirectory()) {
+    mkdirSync(hedef, { recursive: true });
+    for (const ad of readdirSync(kaynak)) ozyinelemeliKopyala(join(kaynak, ad), join(hedef, ad), { filtre });
+    return;
+  }
+  mkdirSync(dirname(hedef), { recursive: true });
+  copyFileSync(kaynak, hedef);
 }
 
 export function atomikYaz(dosya, icerik) {

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
+import { ozyinelemeliKopyala } from '../sistem/lib/yol.mjs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { after, before, describe, test } from 'node:test';
@@ -63,7 +64,7 @@ function kullaniciParmakIzi({ gunlukHaric = false } = {}) {
 function paketYap(surum, degistir) {
   const kopya = join(tmp, `kaynak-${surum}`);
   for (const ad of ['sistem', 'beyin.mjs', 'package.json', 'arac']) {
-    cpSync(join(REPO, ad), join(kopya, ad), { recursive: true });
+    ozyinelemeliKopyala(join(REPO, ad), join(kopya, ad));
   }
   const surumDosyasi = join(kopya, 'sistem', 'surum.json');
   const surumJson = JSON.parse(readFileSync(surumDosyasi, 'utf8'));

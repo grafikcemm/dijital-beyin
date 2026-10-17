@@ -1,8 +1,10 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+  existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync,
 } from 'node:fs';
+import { ozyinelemeliKopyala } from '../sistem/lib/yol.mjs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -54,9 +56,9 @@ before(() => {
   kaynak = join(kok, 'kaynak paket');
   mkdirSync(kaynak, { recursive: true });
   const filtre = kaynakYol => !kaynakYol.endsWith('.tmp');
-  cpSync(join(REPO, 'sistem'), join(kaynak, 'sistem'), { recursive: true, filter: filtre });
-  cpSync(join(REPO, 'sablon'), join(kaynak, 'sablon'), { recursive: true, filter: filtre });
-  cpSync(join(REPO, 'beyin.mjs'), join(kaynak, 'beyin.mjs'));
+  ozyinelemeliKopyala(join(REPO, 'sistem'), join(kaynak, 'sistem'), { filtre: filtre });
+  ozyinelemeliKopyala(join(REPO, 'sablon'), join(kaynak, 'sablon'), { filtre: filtre });
+  ozyinelemeliKopyala(join(REPO, 'beyin.mjs'), join(kaynak, 'beyin.mjs'));
 });
 
 after(() => {
@@ -352,8 +354,8 @@ describe('kancalar', () => {
 
     const tasinmis = join(kok, 'tamamen baska yer', 'Taşınan Kasa');
     mkdirSync(tasinmis, { recursive: true });
-    cpSync(join(hedef, '.codex'), join(tasinmis, '.codex'), { recursive: true });
-    cpSync(join(hedef, '.claude'), join(tasinmis, '.claude'), { recursive: true });
+    ozyinelemeliKopyala(join(hedef, '.codex'), join(tasinmis, '.codex'));
+    ozyinelemeliKopyala(join(hedef, '.claude'), join(tasinmis, '.claude'));
     const durum = kancaDurumu(tasinmis);
     assert.equal(durum.codex.kurulu, false);
     assert.deepEqual(durum.codex.eksik, ['yol']);
@@ -491,5 +493,26 @@ describe('yarıda kalmış güncelleme işareti', () => {
     assert.equal(cikti, '');
     kur({ kaynak, hedef, simdi: SIMDI });
     assert.ok(!existsSync(isaret));
+  });
+});
+
+describe('symlink üzerinden açılan kasa', () => {
+  test('kanca bağlantılı yoldan çalıştırılınca da bağlam verir (macOS /var → /private/var)', () => {
+    const hedef = kurulmusKasa();
+    // Arka plan güncelleme denetimi başlamasın: o süreç klasörü açık tutar, temizlik EPERM verir.
+    writeFileSync(join(hedef, '.beyin', 'tercihler.json'), JSON.stringify({ guncelleme_bildirimi: false }));
+    const bag = join(kok, `bag-${Date.now()}`);
+    try { symlinkSync(hedef, bag, 'junction'); } catch { return; }
+    let sonuc;
+    try {
+      sonuc = spawnSync(process.execPath, [join(bag, 'sistem', 'kanca.mjs'), 'claude', 'baslangic'], {
+        input: JSON.stringify({ cwd: bag }), encoding: 'utf8', timeout: 20_000,
+      });
+    } finally {
+      // Bağlantı kaldırılmazsa özyinelemeli temizlik Windows'ta EPERM verir.
+      try { unlinkSync(bag); } catch { try { rmdirSync(bag); } catch { /* yok say */ } }
+    }
+    assert.equal(sonuc.status, 0, sonuc.stderr);
+    assert.match(sonuc.stdout, /"hookEventName":"SessionStart"/u);
   });
 });

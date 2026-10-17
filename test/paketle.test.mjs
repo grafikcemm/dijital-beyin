@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { ozyinelemeliKopyala } from '../sistem/lib/yol.mjs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { paketOlustur } from '../arac/paketle.mjs';
@@ -15,10 +16,10 @@ const ZAMAN = '2026-10-17T00:00:00.000Z';
 function kaynakKopyasi() {
   const kok = geciciKlasor();
   const atla = kaynak => !/\.tmp$/iu.test(basename(kaynak));
-  cpSync(join(DEPO, 'sistem'), join(kok, 'sistem'), { recursive: true, filter: atla });
-  cpSync(join(DEPO, 'arac'), join(kok, 'arac'), { recursive: true, filter: atla });
-  cpSync(join(DEPO, 'beyin.mjs'), join(kok, 'beyin.mjs'));
-  cpSync(join(DEPO, 'package.json'), join(kok, 'package.json'));
+  ozyinelemeliKopyala(join(DEPO, 'sistem'), join(kok, 'sistem'), { filtre: atla });
+  ozyinelemeliKopyala(join(DEPO, 'arac'), join(kok, 'arac'), { filtre: atla });
+  ozyinelemeliKopyala(join(DEPO, 'beyin.mjs'), join(kok, 'beyin.mjs'));
+  ozyinelemeliKopyala(join(DEPO, 'package.json'), join(kok, 'package.json'));
   if (!existsSync(join(kok, 'sistem', 'cli.mjs'))) {
     writeFileSync(join(kok, 'sistem', 'cli.mjs'), 'export async function main() { return 0; }\n');
   }
