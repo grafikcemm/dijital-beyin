@@ -1,5 +1,10 @@
 # Değişiklik günlüğü
 
+## 1.0.1 — 2026-10-17
+
+- `[kaydetme]` ile kayıt dışı bırakılan oturumların işaretleri artık birikmiyor: yeni bir işaret yazılırken 30 günden eski olanlar silinir.
+- Güncelleme hattının ilk gerçek denemesi: 1.0.0 kuranlar `node beyin.mjs guncelle` ile bu sürüme geçer; notlarına dokunulmaz.
+
 ## 1.0.0 — 2026-10-17
 
 İlk sürüm.

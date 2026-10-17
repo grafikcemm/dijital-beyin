@@ -1,6 +1,8 @@
 // Modelsiz oturum yakalama: Claude Code / Codex JSONL'ünden gunluk/ bloğu.
 // Kanca içinde çalışır: ağ yok, model yok, oturumuYakala asla fırlatmaz.
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
+import {
+  closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync, unlinkSync,
+} from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { sirlariGizle } from './gizlilik.mjs';
 import { tercihleriOku } from './tercihler.mjs';
@@ -312,6 +314,22 @@ function kaydetmeIsareti(kok, oturumId) {
   return join(yollar(kok).durum, 'kaydetme', `${oturumId}.isaret`);
 }
 
+// Bir oturum 30 günden uzun sürmez; daha eski vazgeçme işaretleri birikmesin diye silinir.
+const ISARET_OMRU_MS = 30 * 24 * 60 * 60 * 1000;
+
+function eskiIsaretleriTemizle(kok, an) {
+  const dizin = join(yollar(kok).durum, 'kaydetme');
+  let adlar;
+  try { adlar = readdirSync(dizin); } catch { return; }
+  for (const ad of adlar) {
+    if (!ad.endsWith('.isaret')) continue;
+    const yol = join(dizin, ad);
+    try {
+      if (an.getTime() - statSync(yol).mtimeMs > ISARET_OMRU_MS) unlinkSync(yol);
+    } catch { /* başka süreç sildiyse sorun değil */ }
+  }
+}
+
 function blokSil(dosya, id) {
   if (!existsSync(dosya)) return false;
   const mevcut = readFileSync(dosya, 'utf8');
@@ -347,7 +365,10 @@ export function oturumuYakala(kok, { istemci, oturumId, transkriptYolu, olay, si
     if (!vazgecildi) {
       vazgecildi = kaydetmeIstendiMi(mesajlar)
         || (statSync(transkriptYolu).size > PENCERE_BAYT && tumDosyadaKaydetmeVarMi(transkriptYolu));
-      if (vazgecildi) atomikYaz(isaret, `${an.toISOString()}\n`);
+      if (vazgecildi) {
+        atomikYaz(isaret, `${an.toISOString()}\n`);
+        eskiIsaretleriTemizle(kok, an);
+      }
     }
     if (vazgecildi) {
       return kilitliCalis(kok, () => {
