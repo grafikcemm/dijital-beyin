@@ -1,0 +1,90 @@
+name: surum
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+# TODO(sabitleme): actions/checkout ve actions/setup-node tam commit SHA'sına
+# sabitlenmeli ("@<40 hane> # v4.x.y"). SHA'lar güvenilir bir kaynaktan
+# doğrulanamadığı için şimdilik sürüm etiketi kullanılıyor; uydurma SHA yazılmadı.
+jobs:
+  # Yayından önce üç işletim sisteminde testler; biri düşerse sürüm yayınlanmaz.
+  test:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4 # TODO(sabitleme): tam SHA
+      - uses: actions/setup-node@v4 # TODO(sabitleme): tam SHA
+        with:
+          node-version: ${{ matrix.node }}
+      # Node 21+ "node --test test/" klasörünü modül sanıp düşer; bash glob'u kullanılır.
+      - name: Testler
+        shell: bash
+        run: node --test test/*.test.mjs
+
+  yayinla:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # TODO(sabitleme): tam SHA
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4 # TODO(sabitleme): tam SHA
+        with:
+          node-version: 22
+
+      - name: Etiket ile sistem/surum.json aynı mı
+        run: |
+          SURUM="$(node -p "require('./sistem/surum.json').surum")"
+          if [ "${GITHUB_REF_NAME}" != "v${SURUM}" ]; then
+            echo "Etiket ${GITHUB_REF_NAME}, sistem/surum.json ${SURUM} diyor." >&2
+            exit 1
+          fi
+          echo "SURUM=${SURUM}" >> "$GITHUB_ENV"
+
+      - name: Paketle
+        run: node arac/paketle.mjs
+
+      - name: Sürüm notları
+        run: |
+          touch CHANGELOG.md
+          awk -v v="$SURUM" '
+            /^## / {
+              if (f) exit
+              h = $0
+              sub(/^## +/, "", h)
+              sub(/^\[/, "", h)
+              n = index(h, " ")
+              if (n) h = substr(h, 1, n - 1)
+              sub(/\]$/, "", h)
+              if (h == v) { f = 1; next }
+            }
+            f
+          ' CHANGELOG.md > notlar.md
+          echo "Notlar: $(wc -l < notlar.md) satır"
+
+      - name: GitHub sürümü oluştur
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Ön sürüm etiketi (ör. v1.1.0-beta.1) "prerelease" yayınlanır; releases/latest
+          # onu atlar, böylece kullanıcıların "guncelle" komutu ön sürüme geçmez.
+          ON_SURUM=""
+          case "$GITHUB_REF_NAME" in
+            *-*) ON_SURUM="--prerelease" ;;
+          esac
+          if grep -q '[^[:space:]]' notlar.md; then
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notlar.md $ON_SURUM
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes $ON_SURUM
+          fi
