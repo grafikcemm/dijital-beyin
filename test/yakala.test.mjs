@@ -1,6 +1,6 @@
 import { after, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -203,6 +203,24 @@ describe('oturumuYakala', () => {
     const sonuc = oturumuYakala(kok, { istemci: 'claude', oturumId: 'x1', transkriptYolu: dosya, simdi: SIMDI });
     assert.equal(sonuc.neden, 'kaydetme');
     assert.equal(existsSync(join(kok, 'gunluk', '2026-10-17.md')), false);
+  });
+
+  test('yeni vazgeçme işareti 30 günden eski işaretleri temizler, yenilere dokunmaz', () => {
+    const kok = kasaKur();
+    const dizin = join(kok, '.beyin', 'durum', 'kaydetme');
+    mkdirSync(dizin, { recursive: true });
+    const eski = join(dizin, 'eski.isaret');
+    const yeni = join(dizin, 'yeni.isaret');
+    writeFileSync(eski, 'x');
+    writeFileSync(yeni, 'x');
+    const kirkGunOnce = new Date(SIMDI.getTime() - 40 * 24 * 60 * 60 * 1000);
+    utimesSync(eski, kirkGunOnce, kirkGunOnce);
+    utimesSync(yeni, SIMDI, SIMDI);
+    const dosya = satirlarYaz(kok, 't.jsonl', [kullanici('[kaydetme] özel'), asistan('Tamam.')]);
+    oturumuYakala(kok, { istemci: 'claude', oturumId: 'temiz1', transkriptYolu: dosya, simdi: SIMDI });
+    assert.equal(existsSync(eski), false);
+    assert.equal(existsSync(yeni), true);
+    assert.equal(existsSync(join(dizin, 'temiz1.isaret')), true);
   });
 
   test('yakalama kapalı, geçersiz kimlik, eksik transkript ve boş oturum atlanır', () => {

@@ -17,6 +17,13 @@ const KULLANICI_KOKLERI = ['beynim', 'notlar', 'gunluk', 'gelen-kutusu'];
 let tmp;
 let kasa;
 
+// Sürümler depodaki sürümden türetilir; sabit numara her sürüm yükseltmesinde testi bozar.
+const SURUM = JSON.parse(readFileSync(join(REPO, 'sistem', 'surum.json'), 'utf8')).surum;
+const sonraki = adim => SURUM.replace(/(\d+)$/u, y => String(Number(y) + adim));
+const S1 = sonraki(1);
+const S2 = sonraki(2);
+const kalip = s => new RegExp(s.replaceAll('.', '\\.'), 'u');
+
 function node(args, { cwd, girdi, env } = {}) {
   const sonuc = spawnSync(process.execPath, args, {
     cwd: cwd ?? kasa,
@@ -110,7 +117,7 @@ describe('uçtan uca', { concurrency: false }, () => {
     // Testte ağa çıkılmasın: günlük kontrol az önce yapılmış sayılır.
     mkdirSync(join(kasa, '.beyin', 'durum'), { recursive: true });
     writeFileSync(join(kasa, '.beyin', 'durum', 'guncelleme.json'),
-      JSON.stringify({ son_kontrol: new Date().toISOString(), en_son_surum: '1.0.0' }));
+      JSON.stringify({ son_kontrol: new Date().toISOString(), en_son_surum: SURUM }));
   });
 
   test('oturum başı bağlamı notları içerir', () => {
@@ -188,25 +195,25 @@ describe('uçtan uca', { concurrency: false }, () => {
 
   test('güncelleme kullanıcı dosyalarına dokunmaz', () => {
     const once = kullaniciParmakIzi();
-    const { paket, sha } = paketYap('1.0.1');
+    const { paket, sha } = paketYap(S1);
     const sonuc = node([join(kasa, 'beyin.mjs'), 'guncelle', '--paket', paket, '--sha', sha]);
     assert.equal(sonuc.kod, 0, sonuc.err + sonuc.out);
-    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, /1\.0\.1/u);
-    assert.equal(JSON.parse(readFileSync(join(kasa, '.beyin', 'kurulum.json'), 'utf8')).surum, '1.0.1');
+    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, kalip(S1));
+    assert.equal(JSON.parse(readFileSync(join(kasa, '.beyin', 'kurulum.json'), 'utf8')).surum, S1);
     assert.deepEqual(kullaniciParmakIzi(), once);
   });
 
   test('bozuk güncelleme kendini geri alır', () => {
     const once = kullaniciParmakIzi();
     const cliOnce = readFileSync(join(kasa, 'sistem', 'cli.mjs'));
-    const { paket, sha } = paketYap('1.0.2', kopya => {
+    const { paket, sha } = paketYap(S2, kopya => {
       writeFileSync(join(kopya, 'sistem', 'lib', 'doktor.mjs'),
         'export async function doktor() { return { saglikli: false, kontroller: [{ ad: "x", durum: "hata", mesaj: "bozuk" }] }; }\n');
-      writeFileSync(join(kopya, 'sistem', 'cli.mjs'), `${readFileSync(join(kopya, 'sistem', 'cli.mjs'), 'utf8')}\n// 1.0.2\n`);
+      writeFileSync(join(kopya, 'sistem', 'cli.mjs'), `${readFileSync(join(kopya, 'sistem', 'cli.mjs'), 'utf8')}\n// ${S2}\n`);
     });
     const sonuc = node([join(kasa, 'beyin.mjs'), 'guncelle', '--paket', paket, '--sha', sha]);
     assert.equal(sonuc.kod, 1);
-    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, /1\.0\.1/u);
+    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, kalip(S1));
     assert.deepEqual(readFileSync(join(kasa, 'sistem', 'cli.mjs')), cliOnce);
     assert.deepEqual(kullaniciParmakIzi(), once);
   });
@@ -215,7 +222,7 @@ describe('uçtan uca', { concurrency: false }, () => {
     const once = kullaniciParmakIzi();
     const geri = node([join(kasa, 'beyin.mjs'), 'geri-al']);
     assert.equal(geri.kod, 0, geri.err);
-    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, /1\.0\.0/u);
+    assert.match(node([join(kasa, 'beyin.mjs'), 'surum']).out, kalip(SURUM));
     const yeniden = node([join(REPO, 'kur.mjs'), '--hedef', kasa, '--istemci', 'claude,codex'], { cwd: tmp });
     assert.equal(yeniden.kod, 0, yeniden.err);
     assert.deepEqual(kullaniciParmakIzi(), once);

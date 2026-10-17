@@ -1,6 +1,6 @@
 {
   "name": "grafikcem-dijital-beyin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Kendi bilgisayarına kurulan, tek komutla güncellenen, modelden bağımsız dijital beyin (Claude Code ve Codex).",
   "type": "module",
   "private": true,
