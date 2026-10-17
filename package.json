@@ -1,0 +1,15 @@
+{
+  "name": "grafikcem-dijital-beyin",
+  "version": "1.0.0",
+  "description": "Kendi bilgisayarına kurulan, tek komutla güncellenen, modelden bağımsız dijital beyin (Claude Code ve Codex).",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "paketle": "node arac/paketle.mjs"
+  }
+}

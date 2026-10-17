@@ -1,0 +1,27 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Node 21+ "node --test test/" klasörünü modül sanıp düşer; bash glob'u
+      # dosyaları her işletim sisteminde ve Node 20/22'de aynı biçimde verir.
+      - name: Testler
+        shell: bash
+        run: node --test test/*.test.mjs
