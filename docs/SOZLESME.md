@@ -69,7 +69,7 @@ sistem/lib/kurulum.mjs  (C)
 sistem/lib/ara.mjs      (C)
 sistem/yonetilen/*      (C)
 sablon/**, ornek/**     (C)
-README.md, KURULUM.md, NOTICE.md, LICENSE, CHANGELOG.md (C)
+README.md, KURULUM.md, LICENSE, CHANGELOG.md (C)
 test/<modül>.test.mjs   modül sahibi
 test/uctan-uca.test.mjs (lider)
 ```

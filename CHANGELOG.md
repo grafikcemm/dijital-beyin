@@ -1,5 +1,10 @@
 # Değişiklik günlüğü
 
+## 1.0.2 — 2026-10-20
+
+- Belgeler sadeleşti: `NOTICE.md` kaldırıldı, README'nin son bölümü "Hazırlayan" oldu.
+- Kod değişmedi; 1.0.1 kuranlar `node beyin.mjs guncelle` ile geçebilir, notlarına dokunulmaz.
+
 ## 1.0.1 — 2026-10-17
 
 - `[kaydetme]` ile kayıt dışı bırakılan oturumların işaretleri artık birikmiyor: yeni bir işaret yazılırken 30 günden eski olanlar silinir.

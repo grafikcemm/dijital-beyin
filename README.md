@@ -174,12 +174,9 @@ kullanır.
 - Kancalar bilgisayarın açıkken ve istemci bu klasörde çalışırken çalışır.
 - Birden fazla bilgisayar arasında eşitleme yapmaz.
 
-## Emeği geçenler
+## Hazırlayan
 
-Bazı fikirler Avenox'un [avenoxbeyin](https://github.com/avenoxai/avenoxbeyin)
-projesinden (MIT lisanslı) uyarlandı; ayrıntı [NOTICE.md](NOTICE.md) dosyasında.
-
-Hazırlayan: Ali Cem Bozma — Grafikcem, grafik tasarımcı. YouTube: [@grafikcem](https://www.youtube.com/@grafikcem).
+Ali Cem Bozma — Grafikcem, grafik tasarımcı. YouTube: [@grafikcem](https://www.youtube.com/@grafikcem).
 
 ## Lisans
 
