@@ -2,7 +2,7 @@
 date: 2026-10-12
 ---
 
-# Verdiğim kararlar
+# Kararlar Günlüğü
 
 Her satır tarihli. Bir karar değişince eskisi silinmez; sonuna GEÇERSİZ ve tarih
 eklenir, yenisi altına yazılır. Çelişki varsa tarihi yeni olan geçerlidir.
@@ -16,5 +16,5 @@ eklenir, yenisi altına yazılır. Çelişki varsa tarihi yeni olan geçerlidir.
 
 ## Elediklerim
 
-- 2026-09-02 — Tamamen yapay zekâyla üretilmiş arka planlar — yayınevi el işçiliği istiyor
+- 2026-09-02 — Tamamen yapay zekayla üretilmiş arka planlar — yayınevi el işçiliği istiyor
 - 2026-09-15 — Her sayfaya konuşma balonu — metin sayfanın altında duracak, balon sayfayı kalabalıklaştırıyor

@@ -1,4 +1,5 @@
-// Oturum başı bağlamı: modele dönük (İngilizce başlıklar), not gövdeleri olduğu gibi.
+// Oturum başı bağlamı: modele dönük (İngilizce başlıklar); not gövdeleri tamamlanmış HTML
+// yorumları (<!-- … -->) çıkarılarak, gerisi olduğu gibi.
 // Modelsiz ve deterministik; asla fırlatmaz.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,26 +15,45 @@ const ELENEN_BASLIK = /eled|elen|vazge[cç]|reddet|rejected|ruled out/iu;
 const OTURUM_SINIR = 3;
 const KESIK = '\n[… truncated to fit the context budget]';
 
-// Bayatlık denetlenen çekirdek notlar, öncelik sırasıyla.
+// Çekirdek notlar, gösterim sırasıyla. Her yuva var olan ilk dosyayı alır: önce 2.x adı,
+// sonra 1.x adı (1.x kasaları kendi adlarını korur). `anahtar` bayatlık sınırının tercihteki
+// adıdır; anahtarı olmayan yuva bayatlık denetimine girmez.
 const CEKIRDEK = [
-  { ad: 'guncel-durum', anahtar: 'guncel_durum', baslik: 'Current status' },
-  { ad: 'aktif-projem', anahtar: 'aktif_projem', baslik: 'Active project' },
-  { ad: 'ben-kimim', anahtar: 'ben_kimim', baslik: 'Who the user is' },
+  { adlar: ['02-Guncel-Durum', 'guncel-durum'], anahtar: 'guncel_durum', baslik: 'Current status' },
+  { adlar: ['aktif-projem'], anahtar: 'aktif_projem', baslik: 'Active project' },
+  { adlar: ['01-Kimlik', 'ben-kimim'], anahtar: 'ben_kimim', baslik: 'Who the user is' },
+  { adlar: ['04-Tuzaklar'], baslik: 'Traps to avoid' },
+  { adlar: ['05-Calisma-Tarzim'], baslik: 'How the user likes to work' },
 ];
-const KARARLAR = 'verdigim-kararlar';
+const KARAR_ADLARI = ['03-Kararlar', 'verdigim-kararlar'];
+const KIMLIK_ADLARI = ['01-Kimlik', 'ben-kimim'];
+// Bu adlardan biri varsa kasa 1.x düzenindedir (eksik dosya için 1.x adı önerilir).
+const V1_ADLARI = ['ben-kimim', 'guncel-durum', 'aktif-projem', 'verdigim-kararlar'];
 
-function kurallar(simdi) {
+function dosyaVar(kok, ad) {
+  try { return existsSync(join(yollar(kok).beynim, `${ad}.md`)); } catch { return false; }
+}
+
+// Adaylardan var olan ilki; hiçbiri yoksa kasa 1.x düzenindeyse 1.x adı, değilse 2.x adı.
+function dosyaAdiSec(kok, adlar) {
+  const bulunan = adlar.find(ad => dosyaVar(kok, ad));
+  if (bulunan) return bulunan;
+  return V1_ADLARI.some(ad => dosyaVar(kok, ad)) ? adlar.at(-1) : adlar[0];
+}
+
+function kurallar(simdi, kok) {
+  const kararDosyasi = `beynim/${dosyaAdiSec(kok, KARAR_ADLARI)}.md`;
   return [
     "# Digital brain (the user's own notes)",
     '',
     `Today is ${yerelTarih(simdi)}. The sections below are quoted from the user's digital brain in this folder. Rules:`,
-    '- When notes disagree, the note with the newer date wins.',
+    '- When notes disagree, follow the note with the newer date and tell the user which line is out of date; ask whether to update it.',
     '- A note that lists another note in its `supersedes` field overrides that note.',
     '- Never invent facts that are not in these notes; say what is missing instead.',
     '- If notes contradict each other or what the user says, ask the user before acting.',
     "- Reply in the user's language.",
     '- To search the brain, run: node beyin.mjs ara "<query>"',
-    '- To record a decision, append a dated line (`- YYYY-MM-DD — decision — reason`) to beynim/verdigim-kararlar.md. When a decision is replaced, add ` GEÇERSİZ (YYYY-MM-DD)` to the end of the old line. Never delete or rewrite old lines.',
+    `- When the session produces a new decision, propose it to the user at the end; append it only after they agree, as a dated line (\`- YYYY-MM-DD — decision — reason\`) to ${kararDosyasi}. Never delete or rewrite old lines; when a decision is replaced, add \` GEÇERSİZ (YYYY-MM-DD)\` to the end of the old line.`,
   ].join('\n');
 }
 
@@ -43,12 +63,41 @@ function gunFarki(simdi, tarih) {
   return Math.round((a - b) / 86_400_000);
 }
 
+const YORUM = /<!--[\s\S]*?-->/gu;
+
+// Tamamlanmış <!-- … --> yorumlarını çıkarır (şablonlardaki yönlendirme insan içindir).
+// Kapanmamış `<!--` olduğu gibi kalır. Satırın tamamı yorumsa satır da gider; yorumun iki
+// yanında boş satır kalırsa biri silinir. Yorum dışındaki metin değişmez.
+export function yorumlariSil(metin) {
+  if (!metin.includes('<!--')) return metin;
+  let out = '';
+  let son = 0;
+  for (const m of metin.matchAll(YORUM)) {
+    const bas = m.index;
+    const bit = bas + m[0].length;
+    const satirBasi = metin.lastIndexOf('\n', bas - 1) + 1;
+    let satirSonu = metin.indexOf('\n', bit);
+    if (satirSonu < 0) satirSonu = metin.length;
+    const tamSatir = satirBasi >= son && !metin.slice(satirBasi, bas).trim() && !metin.slice(bit, satirSonu).trim();
+    if (!tamSatir) {
+      out += metin.slice(son, bas);
+      son = bit;
+      continue;
+    }
+    out += metin.slice(son, satirBasi);
+    son = Math.min(satirSonu + 1, metin.length);
+    const sonraki = metin.indexOf('\n', son);
+    if (sonraki >= 0 && !metin.slice(son, sonraki).trim() && (out === '' || /(?:^|\n)[ \t]*\n$/u.test(out))) son = sonraki + 1;
+  }
+  return out + metin.slice(son);
+}
+
 function notOku(dosya) {
   try {
     const ham = readFileSync(dosya, 'utf8');
     const { veri, govde } = frontmatterAyir(ham);
     const fmTarih = notTarihi(veri);
-    return { veri, govde: govde.trim(), fmTarih, tarih: fmTarih ?? statSync(dosya).mtime };
+    return { veri, govde: yorumlariSil(govde).trim(), fmTarih, tarih: fmTarih ?? statSync(dosya).mtime };
   } catch {
     return null;
   }
@@ -63,8 +112,14 @@ export function bayatNotlar(kok, simdi) {
   const sonuc = [];
   let sinirlar = VARSAYILAN_TERCIHLER.bayat_gun;
   try { sinirlar = tercihleriOku(kok).bayat_gun; } catch { /* varsayılan */ }
-  for (const { ad, anahtar } of CEKIRDEK) {
-    const not = notOku(join(yollar(kok).beynim, `${ad}.md`));
+  for (const { adlar, anahtar } of CEKIRDEK) {
+    if (!anahtar) continue;
+    let ad = null;
+    let not = null;
+    for (const aday of adlar) {
+      not = notOku(join(yollar(kok).beynim, `${aday}.md`));
+      if (not) { ad = aday; break; }
+    }
     if (!not) continue;
     const gun = gunFarki(an, not.tarih);
     const sinir = sinirlar[anahtar];
@@ -119,10 +174,12 @@ function notBolumu(baslik, not, yerine) {
 }
 
 function kararBolumu(kok) {
-  const dosya = join(yollar(kok).beynim, `${KARARLAR}.md`);
-  if (!existsSync(dosya)) return null;
+  const ad = KARAR_ADLARI.find(aday => dosyaVar(kok, aday));
+  if (!ad) return null;
+  const dosya = join(yollar(kok).beynim, `${ad}.md`);
   let govde;
-  try { govde = frontmatterAyir(readFileSync(dosya, 'utf8')).govde; } catch { return null; }
+  // Yorum içindeki "- tarih — karar" ya da "## Elediklerim" satırı karar ve bölüm sayılmasın.
+  try { govde = yorumlariSil(frontmatterAyir(readFileSync(dosya, 'utf8')).govde); } catch { return null; }
   const aktif = [];
   const elenen = [];
   let elenenBolum = false;
@@ -134,7 +191,7 @@ function kararBolumu(kok) {
   }
   if (!aktif.length && !elenen.length) return null;
   const son = aktif.slice(-KARAR_SINIR);
-  const ust = `## Active decisions — beynim/${KARARLAR}.md (latest ${son.length} of ${aktif.length}, oldest first)`;
+  const ust = `## Active decisions — beynim/${ad}.md (latest ${son.length} of ${aktif.length}, oldest first)`;
   const parcalar = [ust, ...son];
   if (elenen.length) {
     const sonElenen = elenen.slice(-ELENEN_SINIR);
@@ -170,13 +227,21 @@ function uyariMetni(uyarilar) {
   return `## Staleness warnings\n${satirlar.join('\n')}`;
 }
 
+// Aynı yuvada hem 2.x hem 1.x adı varsa yalnız 2.x adı okunur; kullanıcının 1.x dosyası
+// sessizce bağlamdan düşmesin diye her çakışma için bir satır (bütçede kesilmez).
+function catismaMetni(catismalar) {
+  if (!catismalar.length) return '';
+  const satirlar = catismalar.map(c => `- ${c.okunan} and ${c.gizli} both exist; only ${c.okunan} is shown here and ${c.gizli} is ignored. Tell the user; only the user can delete or rename a file in beynim/. With their approval you may copy content from one file into the other.`);
+  return `## File name conflicts\n${satirlar.join('\n')}`;
+}
+
 function birlestir(parcalar) {
   return parcalar.filter(Boolean).join('\n\n');
 }
 
 export function baglamOlustur(kok, { simdi, butce } = {}) {
   const an = gecerliTarih(simdi);
-  const kural = kurallar(an);
+  const kural = kurallar(an, kok);
   try {
     const tercihler = tercihleriOku(kok);
     const istenen = Number.isFinite(butce) && butce > 0 ? Math.floor(butce) : tercihler.baglam_karakter;
@@ -185,16 +250,24 @@ export function baglamOlustur(kok, { simdi, butce } = {}) {
     const bolumler = [];
     const gosterilen = new Set();
     const zirve = not => { let n = not; for (let i = 0; n?.dusuren && i < 50; i += 1) n = n.dusuren; return n; };
-    for (const { ad, baslik } of CEKIRDEK) {
-      const not = notlar.get(ad);
+    const catismalar = [];
+    for (const { adlar, baslik } of CEKIRDEK) {
+      const bulunanlar = adlar.map(a => a.toLowerCase()).filter(a => notlar.has(a));
+      const ad = bulunanlar[0];
+      const not = ad ? notlar.get(ad) : null;
       if (!not) continue;
+      for (const gizli of bulunanlar.slice(1)) catismalar.push({ okunan: not.rel, gizli: notlar.get(gizli).rel });
       const gercek = zirve(not);
       if (!gercek || gosterilen.has(gercek.ad) || !gercek.govde) continue;
       gosterilen.add(gercek.ad);
       bolumler.push(notBolumu(baslik, gercek, gercek === not ? null : not.rel));
     }
+    const kararlar = KARAR_ADLARI.filter(aday => dosyaVar(kok, aday));
+    for (const gizli of kararlar.slice(1)) catismalar.push({ okunan: `beynim/${kararlar[0]}.md`, gizli: `beynim/${gizli}.md` });
+    const catismaYazisi = catismaMetni(catismalar);
+    const kararAdlari = new Set(KARAR_ADLARI.map(a => a.toLowerCase()));
     for (const not of [...notlar.values()].sort((a, b) => a.ad.localeCompare(b.ad))) {
-      if (not.dusuren || !not.supersedes.length || gosterilen.has(not.ad) || not.ad === KARARLAR || !not.govde) continue;
+      if (not.dusuren || !not.supersedes.length || gosterilen.has(not.ad) || kararAdlari.has(not.ad) || !not.govde) continue;
       gosterilen.add(not.ad);
       const yerine = not.supersedes.map(h => notlar.get(h)?.rel ?? `${h}.md`).join(', ');
       bolumler.push(notBolumu('Note that overrides older notes', not, yerine));
@@ -210,10 +283,11 @@ export function baglamOlustur(kok, { simdi, butce } = {}) {
       const gorunen = new Set(parcalar.flatMap(p => p.dosyalar));
       return uyariMetni(tumUyarilar.filter(u => gorunen.has(u.dosya)));
     };
-    const metinYap = parcalar => birlestir([kural, ...parcalar.map(p => p.metin), uyarilar(parcalar)]);
+    const metinYap = parcalar => birlestir([kural, ...parcalar.map(p => p.metin), uyarilar(parcalar), catismaYazisi]);
 
     if (!bolumler.length) {
-      return birlestir([kural, 'No brain notes were found yet. Suggest that the user fills in beynim/ben-kimim.md.']);
+      const kimlik = dosyaAdiSec(kok, KIMLIK_ADLARI);
+      return birlestir([kural, `No brain notes were found yet. Suggest that the user fills in beynim/${kimlik}.md.`, catismaYazisi]);
     }
 
     // Kural bloğu ve uyarılar kesilmez; en düşük öncelikli bölümden başlayarak kısaltılır.

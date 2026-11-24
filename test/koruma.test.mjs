@@ -258,3 +258,64 @@ describe('korumaKarari: çoklu küme ve numaralı kararlar', () => {
     izin(karar('# Verdiğim kararlar\n\n1. Poster 1200 TL GEÇERSİZ\n2) Teslim cuma\n3. Yeni\n'));
   });
 });
+
+describe('korumaKarari: 2.x karar dosyası beynim/03-Kararlar.md', () => {
+  const KARARLAR2 = '# Kararlar Günlüğü\n\n## Kararlar\n\n- 2026-11-01 — Ana renk koyu yeşil — lacivert rakiple karışıyordu\n- 2026-11-05 — Teslim cuma — yayınevi onayladı\n';
+  function kasa2() {
+    const kok = kasaKur();
+    writeFileSync(join(kok, 'beynim', '03-Kararlar.md'), KARARLAR2);
+    return kok;
+  }
+
+  test('satır eklemek ve GEÇERSİZ son eki serbest; silmek ve değiştirmek reddedilir, neden 03-Kararlar.md der', () => {
+    const kok = kasa2();
+    const karar = (aracAdi, girdi) => korumaKarari(kok, { aracAdi, girdi: { file_path: 'beynim/03-Kararlar.md', ...girdi } });
+    izin(karar('Write', { content: `${KARARLAR2}- 2026-11-20 — Kapak mat baskı — parlak yansıtıyordu\n` }));
+    izin(karar('Edit', {
+      old_string: '- 2026-11-05 — Teslim cuma — yayınevi onayladı',
+      new_string: '- 2026-11-05 — Teslim cuma — yayınevi onayladı GEÇERSİZ (2026-11-20)\n- 2026-11-20 — Teslim pazartesi — baskı gecikti',
+    }));
+    ret(karar('Write', { content: '# Kararlar Günlüğü\n\n## Kararlar\n\n- 2026-11-05 — Teslim cuma — yayınevi onayladı\n' }), 'beynim/03-Kararlar.md');
+    ret(karar('Edit', { old_string: '- 2026-11-01 — Ana renk koyu yeşil — lacivert rakiple karışıyordu\n', new_string: '' }), 'GEÇERSİZ');
+    ret(karar('Edit', { old_string: 'Teslim cuma', new_string: 'Teslim salı' }));
+    ret(karar('Write', { content: '' }));
+    const sonuc = karar('Edit', { old_string: 'Teslim cuma', new_string: 'Teslim salı' });
+    assert.ok(!sonuc.neden.includes('verdigim-kararlar'), sonuc.neden);
+  });
+
+  test('1.x karar dosyasının reddi kendi adını söyler', () => {
+    const kok = kasaKur();
+    const sonuc = korumaKarari(kok, { aracAdi: 'Edit', girdi: { file_path: 'beynim/verdigim-kararlar.md', old_string: 'poster fiyatı 1200 TL', new_string: 'poster fiyatı 1500 TL' } });
+    ret(sonuc, 'beynim/verdigim-kararlar.md');
+  });
+
+  test('yol biçimleri: ters bölü, mutlak yol, ./ öneki; büyük/küçük harf yalnız duyarsız sistemde aynı dosya', () => {
+    const kok = kasa2();
+    const sil = file_path => korumaKarari(kok, { aracAdi: 'Write', girdi: { file_path, content: '# boş\n' } });
+    ret(sil('beynim\\03-Kararlar.md'));
+    ret(sil('./beynim/03-Kararlar.md'));
+    ret(sil(join(kok, 'beynim', '03-Kararlar.md')));
+    ret(sil(`${kok}\\beynim\\03-Kararlar.md`.replace(/\//gu, '\\')));
+    const varyantlar = ['beynim/03-kararlar.md', 'BEYNIM/03-KARARLAR.md', 'Beynim\\03-kararlar.MD'];
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      for (const yol of varyantlar) ret(sil(yol), 'beynim/03-Kararlar.md');
+      if (process.platform === 'win32') ret(sil(`${kok.toUpperCase()}\\BEYNIM\\03-KARARLAR.MD`));
+    } else {
+      // Linux'ta bunlar ayrı dosyalardır; 03-Kararlar.md değil, sıradan beynim/ notu sayılır.
+      for (const yol of varyantlar.slice(0, 1)) izin(sil(yol));
+    }
+  });
+
+  test('kabuk ve Codex apply_patch', () => {
+    const kok = kasa2();
+    const kabuk = command => korumaKarari(kok, { aracAdi: 'Bash', girdi: { command } });
+    ret(kabuk('rm beynim/03-Kararlar.md'));
+    ret(kabuk('echo "" > beynim/03-Kararlar.md'));
+    izin(kabuk('echo "- 2026-11-20 — yeni — neden" >> beynim/03-Kararlar.md'));
+    const yama = govde => korumaKarari(kok, { aracAdi: 'apply_patch', girdi: { input: `*** Begin Patch\n${govde}\n*** End Patch` } });
+    izin(yama('*** Update File: beynim/03-Kararlar.md\n@@\n-- 2026-11-05 — Teslim cuma — yayınevi onayladı\n+- 2026-11-05 — Teslim cuma — yayınevi onayladı GEÇERSİZ (2026-11-20)\n+- 2026-11-20 — Teslim pazartesi — baskı gecikti'));
+    ret(yama('*** Update File: beynim/03-Kararlar.md\n@@\n-- 2026-11-05 — Teslim cuma — yayınevi onayladı\n+- 2026-11-05 — Teslim salı — yayınevi onayladı'), 'beynim/03-Kararlar.md');
+    ret(yama('*** Add File: beynim/03-Kararlar.md\n+# Kararlar Günlüğü\n+- 2026-11-20 — yeni — neden'));
+    ret(yama('*** Delete File: beynim/03-Kararlar.md'));
+  });
+});

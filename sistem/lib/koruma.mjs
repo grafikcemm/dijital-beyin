@@ -7,8 +7,15 @@ import { tercihleriOku } from './tercihler.mjs';
 const DUYARSIZ = process.platform === 'win32' || process.platform === 'darwin';
 const IZIN = Object.freeze({ izin: true });
 
+// Yalnız eklenebilen karar dosyaları: 1.x adı ve 2.x adı. Karşılaştırma goreliYol ile aynı
+// biçimde yapılır (Windows ve macOS'ta küçük harfe indirilmiş, Linux'ta birebir).
+const KARAR_DOSYALARI = ['beynim/verdigim-kararlar.md', 'beynim/03-Kararlar.md'];
+const KARAR_ANAHTARLARI = new Map(KARAR_DOSYALARI.map(rel => [DUYARSIZ ? rel.toLowerCase() : rel, rel]));
+
+const kararNedeni = dosya => `${dosya} yalnız eklenebilir: eski satırları silme veya değiştirme. Yeni kararı tarihli yeni bir satır olarak ekle; değişen kararın eski satırının sonuna " GEÇERSİZ" yaz.`;
+
 const NEDEN = {
-  karar: 'beynim/verdigim-kararlar.md yalnız eklenebilir: eski satırları silme veya değiştirme. Yeni kararı tarihli yeni bir satır olarak ekle; değişen kararın eski satırının sonuna " GEÇERSİZ" yaz.',
+  karar: kararNedeni(KARAR_DOSYALARI[0]),
   gunluk: 'gunluk/ yalnız eklenebilir: mevcut satırları silme veya değiştirme. Yeni bilgiyi tarihli yeni bir satır olarak ekle.',
   bos: 'beynim/ altındaki bir notu boşaltma. Notu Edit ile güncelle; eskiyen bilgiyi silmek yerine tarihli yeni bilgi ekle.',
   kabuk: 'beynim/ veya gunluk/ altında silme, taşıma ya da üzerine yazma komutu engellendi. Notu Edit ile güncelle; kararlar için tarihli yeni satır ekle ve eskisinin sonuna " GEÇERSİZ" yaz.',
@@ -30,10 +37,15 @@ function goreliYol(kok, ham) {
 
 function tur(rel) {
   if (!rel) return null;
-  if (rel === 'beynim/verdigim-kararlar.md') return 'karar';
+  if (KARAR_ANAHTARLARI.has(rel)) return 'karar';
   if (rel.startsWith('gunluk/')) return 'gunluk';
   if (rel.startsWith('beynim/')) return 'beynim';
   return null;
+}
+
+// Ret nedeni: karar dosyasında ilgili dosyanın adı geçer.
+function nedeni(t, rel) {
+  return t === 'karar' ? kararNedeni(KARAR_ANAHTARLARI.get(rel) ?? KARAR_DOSYALARI[0]) : NEDEN[t];
 }
 
 function satirlar(text) {
@@ -70,7 +82,7 @@ function dosyaKarari(kok, aracAdi, girdi) {
     let mevcut;
     try { mevcut = readFileSync(resolve(kok, String(girdi.file_path ?? girdi.path).replace(/\\/gu, '/')), 'utf8'); }
     catch { return IZIN; }
-    return korunuyor(mevcut, girdi.content, t) ? IZIN : RET(NEDEN[t]);
+    return korunuyor(mevcut, girdi.content, t) ? IZIN : RET(nedeni(t, rel));
   }
   if (!yalnizEkle) return IZIN;
   const duzenlemeler = (Array.isArray(girdi.edits) ? girdi.edits
@@ -87,10 +99,10 @@ function dosyaKarari(kok, aracAdi, girdi) {
       const yeni = typeof d.new_string === 'string' ? d.new_string.replace(/\r\n?/gu, '\n') : '';
       sonuc = d.replace_all ? sonuc.split(eski).join(yeni) : sonuc.replace(eski, () => yeni);
     }
-    return korunuyor(mevcut, sonuc, t) ? IZIN : RET(NEDEN[t]);
+    return korunuyor(mevcut, sonuc, t) ? IZIN : RET(nedeni(t, rel));
   }
   for (const d of duzenlemeler) {
-    if (!korunuyor(d.old_string, typeof d.new_string === 'string' ? d.new_string : '', 'gunluk')) return RET(NEDEN[t]);
+    if (!korunuyor(d.old_string, typeof d.new_string === 'string' ? d.new_string : '', 'gunluk')) return RET(nedeni(t, rel));
   }
   return IZIN;
 }
@@ -98,10 +110,11 @@ function dosyaKarari(kok, aracAdi, girdi) {
 // Codex apply_patch: silinen/taşınan korumalı dosya ya da kaldırılan eski satır.
 function yamaKarari(kok, yama) {
   let t = null;
+  let yamaRel = null;
   let silinen = [];
   let eklenen = [];
   const bitir = () => {
-    if ((t === 'karar' || t === 'gunluk') && !korunuyor(silinen.join('\n'), eklenen.join('\n'), t)) return RET(NEDEN[t]);
+    if ((t === 'karar' || t === 'gunluk') && !korunuyor(silinen.join('\n'), eklenen.join('\n'), t)) return RET(nedeni(t, yamaRel));
     return null;
   };
   for (const satir of yama.replace(/\r/gu, '').split('\n')) {
@@ -117,7 +130,8 @@ function yamaKarari(kok, yama) {
         t = null;
         continue;
       }
-      t = baslik ? tur(goreliYol(kok, baslik[2])) : null;
+      yamaRel = baslik ? goreliYol(kok, baslik[2]) : null;
+      t = tur(yamaRel);
       if (baslik?.[1] === 'Delete' && t) return RET(NEDEN.kabuk);
       if (baslik?.[1] === 'Add' && (t === 'karar' || t === 'gunluk')) {
         // Var olan korunan dosyaya "Add File" onu baştan yazar: eski satırlar yeni içerikte kalmalı.

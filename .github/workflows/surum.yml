@@ -23,7 +23,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Tam geçmiş ve etiketler: yükseltme testi gerçek v1.0.2 ağacını etiketten çıkarır.
       - uses: actions/checkout@v4 # TODO(sabitleme): tam SHA
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4 # TODO(sabitleme): tam SHA
         with:
           node-version: ${{ matrix.node }}

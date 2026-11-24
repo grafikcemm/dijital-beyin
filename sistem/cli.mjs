@@ -9,7 +9,7 @@ const SISTEM = dirname(fileURLToPath(import.meta.url));
 
 const YARDIM = `Dijital Beyin — komutlar
 
-  node beyin.mjs baglam                 Oturum başında yapay zekâya verilen bağlamı göster
+  node beyin.mjs baglam                 Oturum başında yapay zekaya verilen bağlamı göster
   node beyin.mjs ara "<sorgu>"          Notlarında ara (--limit 10)
   node beyin.mjs doktor                 Her şey çalışıyor mu, kontrol et (--json)
   node beyin.mjs guncelle               Yeni sürümü kur (--kontrol yalnız bakar)

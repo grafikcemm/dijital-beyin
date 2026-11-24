@@ -90,9 +90,9 @@ function paketYap(surum, degistir) {
 }
 
 const ELIF = {
-  'beynim/ben-kimim.md': '---\ndate: 2026-10-01\n---\n# Ben kimim\n\nElif, serbest illüstratör. Çocuk kitabı illüstrasyonu yapıyor.\n',
-  'beynim/aktif-projem.md': '---\ndate: 2026-10-15\n---\n# Aktif projem\n\nDeniz feneri temalı resimli kitap, 24 sayfa.\n',
-  'beynim/verdigim-kararlar.md': '# Verdiğim kararlar\n\n## Kararlar\n\n- 2026-10-02 — Kapakta sulu boya kullanacağım — müşteri sıcak ton istedi\n- 2026-10-10 — Teslim tarihi 30 Ekim — yayınevi onayladı\n',
+  'beynim/01-Kimlik.md': '---\ndate: 2026-10-01\n---\n# Kimlik\n\nElif, serbest illüstratör. Çocuk kitabı illüstrasyonu yapıyor.\n',
+  'beynim/02-Guncel-Durum.md': '---\ndate: 2026-10-15\n---\n# Güncel Durum\n\nDeniz feneri temalı resimli kitap, 24 sayfa.\n',
+  'beynim/03-Kararlar.md': '# Kararlar Günlüğü\n\n## Kararlar\n\n- 2026-10-02 — Kapakta sulu boya kullanacağım — müşteri sıcak ton istedi\n- 2026-10-10 — Teslim tarihi 30 Ekim — yayınevi onayladı\n',
 };
 
 before(() => {
@@ -109,7 +109,7 @@ describe('uçtan uca', { concurrency: false }, () => {
     const sonuc = node([join(REPO, 'kur.mjs'), '--hedef', kasa, '--istemci', 'claude,codex'], { cwd: tmp });
     assert.equal(sonuc.kod, 0, sonuc.err + sonuc.out);
     for (const yol of ['beyin.mjs', 'sistem/cli.mjs', 'sistem/kanca.mjs', '.beyin/kurulum.json',
-      'beynim/ben-kimim.md', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json', '.codex/hooks.json']) {
+      'beynim/01-Kimlik.md', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json', '.codex/hooks.json']) {
       assert.ok(existsSync(join(kasa, yol)), `${yol} yok`);
     }
     for (const [rel, icerik] of Object.entries(ELIF)) writeFileSync(join(kasa, rel), icerik);
@@ -164,7 +164,7 @@ describe('uçtan uca', { concurrency: false }, () => {
   });
 
   test('karar dosyası korunur', () => {
-    const karar = join(kasa, 'beynim', 'verdigim-kararlar.md');
+    const karar = join(kasa, 'beynim', '03-Kararlar.md');
     const eski = readFileSync(karar, 'utf8');
     const sil = kanca('claude', 'koruma', {
       cwd: kasa, tool_name: 'Write',
@@ -178,7 +178,7 @@ describe('uçtan uca', { concurrency: false }, () => {
     });
     assert.equal(ekle.out, '');
     const komut = kanca('claude', 'koruma', {
-      cwd: kasa, tool_name: 'Bash', tool_input: { command: 'rm beynim/verdigim-kararlar.md' },
+      cwd: kasa, tool_name: 'Bash', tool_input: { command: 'rm beynim/03-Kararlar.md' },
     });
     assert.equal(JSON.parse(komut.out).hookSpecificOutput.permissionDecision, 'deny');
   });
@@ -190,7 +190,7 @@ describe('uçtan uca', { concurrency: false }, () => {
     assert.equal(doktor.kod, 0);
     const ara = node([join(kasa, 'beyin.mjs'), 'ara', 'sulu boya']);
     assert.equal(ara.kod, 0, ara.err);
-    assert.match(ara.out, /beynim\/verdigim-kararlar\.md/u);
+    assert.match(ara.out, /beynim\/03-Kararlar\.md/u);
   });
 
   test('güncelleme kullanıcı dosyalarına dokunmaz', () => {

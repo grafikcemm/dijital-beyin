@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import {
   kancaDurumu, kancalariBirlestir, kur, manifestOku, manifestYaz, onar,
 } from '../sistem/lib/kurulum.mjs';
+import { baglamOlustur } from '../sistem/lib/baglam.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BOM = String.fromCharCode(0xfeff);
@@ -71,7 +72,8 @@ describe('kur', () => {
     const sonuc = kur({ kaynak, hedef, simdi: SIMDI });
     for (const rel of [
       'beyin.mjs', 'sistem/surum.json', 'sistem/lib/kurulum.mjs', 'sistem/yonetilen/claude-blok.md',
-      'beynim/ben-kimim.md', 'beynim/aktif-projem.md', 'beynim/verdigim-kararlar.md', 'beynim/guncel-durum.md',
+      'beynim/01-Kimlik.md', 'beynim/02-Guncel-Durum.md', 'beynim/03-Kararlar.md', 'beynim/04-Tuzaklar.md',
+      'beynim/05-Calisma-Tarzim.md',
       'notlar/README.md', 'gunluk/README.md', 'gelen-kutusu/README.md',
       'CLAUDE.md', 'AGENTS.md', '.gitignore', '.claude/settings.json', '.beyin/kurulum.json',
     ]) {
@@ -97,7 +99,7 @@ describe('kur', () => {
 
   test('yeniden kurulum kullanıcı dosyalarını bayt bayt korur', () => {
     const hedef = kurulmusKasa();
-    const benKimim = join(hedef, 'beynim', 'ben-kimim.md');
+    const benKimim = join(hedef, 'beynim', '01-Kimlik.md');
     writeFileSync(benKimim, `${BOM}---\r\ndate: 2026-10-01\r\n---\r\nAdım Elif.\r\n`);
     const notDosya = join(hedef, 'notlar', 'fikir.md');
     writeFileSync(notDosya, 'kendi notum\n');
@@ -111,12 +113,12 @@ describe('kur', () => {
     assert.ok(readFileSync(benKimim).equals(once.ben));
     assert.ok(readFileSync(notDosya).equals(once.not));
     assert.ok(readFileSync(join(hedef, '.beyin', 'tercihler.json')).equals(tercih));
-    assert.ok(sonuc.korunanlar.includes('beynim/ben-kimim.md'));
+    assert.ok(sonuc.korunanlar.includes('beynim/01-Kimlik.md'));
     assert.ok(!sonuc.korunanlar.includes('gunluk/README.md'));
     assert.ok(sonuc.yazilanlar.includes('gunluk/README.md'), 'eksik şablon yeniden eklenir');
     assert.ok(sonuc.yazilanlar.includes('sistem/surum.json'), 'yönetilen dosya yenilenir');
     assert.ok(sonuc.uyarilar.includes('yerel_degisiklik_ezilecek:sistem/surum.json'));
-    assert.ok(!sonuc.yazilanlar.includes('beynim/ben-kimim.md'));
+    assert.ok(!sonuc.yazilanlar.includes('beynim/01-Kimlik.md'));
   });
 
   test('hedef kaynakla aynı ya da içindeyse, kaynak hedefin içindeyse reddeder', () => {
@@ -140,7 +142,7 @@ describe('kur', () => {
     const sonuc = kur({ kaynak, hedef, plan: true, istemciler: ['claude', 'codex'] });
     assert.equal(existsSync(hedef), false);
     assert.ok(sonuc.yazilanlar.includes('beyin.mjs'));
-    assert.ok(sonuc.yazilanlar.includes('beynim/ben-kimim.md'));
+    assert.ok(sonuc.yazilanlar.includes('beynim/01-Kimlik.md'));
     assert.ok(sonuc.yazilanlar.includes('CLAUDE.md'));
     assert.ok(sonuc.yazilanlar.includes('.codex/hooks.json'));
 
@@ -151,7 +153,7 @@ describe('kur', () => {
     assert.deepEqual(anlikGoruntu(kasa), once);
     assert.ok(plan.yazilanlar.includes('CLAUDE.md'));
     assert.ok(!plan.yazilanlar.includes('beyin.mjs'), 'aynı içerikli yönetilen dosya listelenmez');
-    assert.ok(plan.korunanlar.includes('beynim/ben-kimim.md'));
+    assert.ok(plan.korunanlar.includes('beynim/01-Kimlik.md'));
   });
 
   test('boş olmayan, kasa olmayan klasör uyarı verir ama dosyalara dokunmaz', () => {
@@ -468,11 +470,11 @@ describe('onar eksik kullanıcı klasörlerini yeniden oluşturur', () => {
 
   test('sablon verilirse eksik şablon dosyaları eklenir, var olan dosyaya yazılmaz', () => {
     const hedef = kurulmusKasa();
-    writeFileSync(join(hedef, 'beynim', 'ben-kimim.md'), 'Elif benim\n');
-    rmSync(join(hedef, 'beynim', 'guncel-durum.md'));
+    writeFileSync(join(hedef, 'beynim', '01-Kimlik.md'), 'Elif benim\n');
+    rmSync(join(hedef, 'beynim', '02-Guncel-Durum.md'));
     onar(hedef, { simdi: SIMDI, sablon: join(kaynak, 'sablon') });
-    assert.equal(readFileSync(join(hedef, 'beynim', 'ben-kimim.md'), 'utf8'), 'Elif benim\n');
-    assert.ok(existsSync(join(hedef, 'beynim', 'guncel-durum.md')));
+    assert.equal(readFileSync(join(hedef, 'beynim', '01-Kimlik.md'), 'utf8'), 'Elif benim\n');
+    assert.ok(existsSync(join(hedef, 'beynim', '02-Guncel-Durum.md')));
   });
 });
 
@@ -514,5 +516,88 @@ describe('symlink üzerinden açılan kasa', () => {
     }
     assert.equal(sonuc.status, 0, sonuc.stderr);
     assert.match(sonuc.stdout, /"hookEventName":"SessionStart"/u);
+  });
+});
+
+describe('2.x şablonları ve 1.x kasaları', () => {
+  const V1_NOTLARI = {
+    'ben-kimim.md': '---\ndate: 2026-10-01\n---\n# Ben kimim\n\n- Adım: Elif\n',
+    'aktif-projem.md': '---\ndate: 2026-10-15\n---\n# Şu an ne üzerinde çalışıyorum\n\n## Proje: Deniz feneri\n',
+    'guncel-durum.md': '---\ndate: 2026-10-16\n---\n# Güncel durum\n\n- Bu hafta: kapak\n',
+    'verdigim-kararlar.md': '# Verdiğim kararlar\n\n## Kararlar\n\n- 2026-10-02 — Sulu boya — sıcak ton\n',
+  };
+  const V2_SABLONLARI = ['01-Kimlik.md', '02-Guncel-Durum.md', '03-Kararlar.md', '04-Tuzaklar.md', '05-Calisma-Tarzim.md'];
+
+  // 1.x düzenindeki kasa: kurulum aynı, beynim/ yalnız 1.x adlarıyla dolu.
+  function v1Kasasi() {
+    const hedef = kurulmusKasa();
+    for (const ad of V2_SABLONLARI) rmSync(join(hedef, 'beynim', ad));
+    for (const [ad, icerik] of Object.entries(V1_NOTLARI)) writeFileSync(join(hedef, 'beynim', ad), icerik);
+    return hedef;
+  }
+
+  test('1.x kasasında kurucu yeniden çalışınca yalnız 04-Tuzaklar.md ve 05-Calisma-Tarzim.md eklenir', () => {
+    const hedef = v1Kasasi();
+    const once = anlikGoruntu(join(hedef, 'beynim'));
+
+    const plan = kur({ kaynak, hedef, plan: true });
+    assert.deepEqual(plan.yazilanlar.filter(r => r.startsWith('beynim/')).sort(), ['beynim/04-Tuzaklar.md', 'beynim/05-Calisma-Tarzim.md']);
+
+    const sonuc = kur({ kaynak, hedef, simdi: SIMDI });
+    assert.deepEqual(sonuc.yazilanlar.filter(r => r.startsWith('beynim/')).sort(), ['beynim/04-Tuzaklar.md', 'beynim/05-Calisma-Tarzim.md']);
+    assert.deepEqual(readdirSync(join(hedef, 'beynim')).sort(),
+      ['04-Tuzaklar.md', '05-Calisma-Tarzim.md', 'aktif-projem.md', 'ben-kimim.md', 'guncel-durum.md', 'verdigim-kararlar.md']);
+    for (const [rel, b64] of Object.entries(once)) {
+      assert.equal(readFileSync(join(hedef, 'beynim', rel)).toString('base64'), b64, `${rel} değişmemeli`);
+    }
+    // Atlanan 2.x şablonu, kullanıcının korunan 1.x dosyası olarak listelenir.
+    for (const rel of ['beynim/ben-kimim.md', 'beynim/guncel-durum.md', 'beynim/verdigim-kararlar.md']) {
+      assert.ok(sonuc.korunanlar.includes(rel), rel);
+    }
+    assert.ok(!sonuc.korunanlar.some(r => /beynim\/0[1-3]-/u.test(r)), JSON.stringify(sonuc.korunanlar));
+
+    // Üçüncü kurulum ve onar(sablon) da 01/02/03 eklemez.
+    kur({ kaynak, hedef, simdi: SIMDI });
+    onar(hedef, { simdi: SIMDI, sablon: join(kaynak, 'sablon') });
+    for (const ad of ['01-Kimlik.md', '02-Guncel-Durum.md', '03-Kararlar.md']) {
+      assert.equal(existsSync(join(hedef, 'beynim', ad)), false, ad);
+    }
+  });
+
+  test('1.x karşılığı olmayan kasada eksik 2.x şablonu eklenir', () => {
+    const hedef = v1Kasasi();
+    rmSync(join(hedef, 'beynim', 'ben-kimim.md'));
+    const eklenen = onar(hedef, { simdi: SIMDI, sablon: join(kaynak, 'sablon') }).degisenler.filter(r => r.startsWith('beynim/'));
+    assert.deepEqual(eklenen.sort(), ['beynim/01-Kimlik.md', 'beynim/04-Tuzaklar.md', 'beynim/05-Calisma-Tarzim.md']);
+    assert.equal(existsSync(join(hedef, 'beynim', '02-Guncel-Durum.md')), false);
+    assert.equal(existsSync(join(hedef, 'beynim', '03-Kararlar.md')), false);
+  });
+
+  test('temiz 2.x kurulumu: bölümler 02, 01, 04, 05 sırasıyla; kararlar 03-Kararlar.md dosyasından', () => {
+    const hedef = kurulmusKasa();
+    assert.deepEqual(readdirSync(join(hedef, 'beynim')).sort(), V2_SABLONLARI);
+    const kararDosyasi = join(hedef, 'beynim', '03-Kararlar.md');
+    const sablon = readFileSync(kararDosyasi, 'utf8');
+    writeFileSync(kararDosyasi, sablon.replace('## Kararlar\n', '## Kararlar\n\n- 2026-10-12 — Kapak mat baskı — parlak yansıtıyordu\n'));
+
+    const metin = baglamOlustur(hedef, { simdi: SIMDI });
+    const sira = [
+      '## Current status — beynim/02-Guncel-Durum.md',
+      '## Who the user is — beynim/01-Kimlik.md',
+      '## Traps to avoid — beynim/04-Tuzaklar.md',
+      '## How the user likes to work — beynim/05-Calisma-Tarzim.md',
+      '## Active decisions — beynim/03-Kararlar.md (latest 1 of 1, oldest first)',
+    ];
+    const konumlar = sira.map(s => metin.indexOf(s));
+    assert.ok(konumlar.every(k => k > 0), JSON.stringify(konumlar));
+    assert.deepEqual([...konumlar].sort((a, b) => a - b), konumlar);
+    assert.ok(metin.includes('- 2026-10-12 — Kapak mat baskı — parlak yansıtıyordu'));
+    assert.ok(metin.includes('to beynim/03-Kararlar.md. Never delete or rewrite old lines;'));
+    assert.ok(!metin.includes('## Active project'));
+    assert.ok(!/ben-kimim|guncel-durum|verdigim-kararlar|aktif-projem/u.test(metin), metin);
+    assert.ok(metin.length <= 6000, String(metin.length));
+    // Şablonlardaki yönlendirme yorumları insan içindir; bağlama girmez.
+    assert.ok(!metin.includes('<!--') && !metin.includes('-->'), metin);
+    assert.ok(metin.includes('- Adım:'));
   });
 });

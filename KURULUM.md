@@ -1,6 +1,6 @@
 # Dijital Beyin kurulumu
 
-> **Türkçe not:** Bu dosya yapay zekâ ajanının (Claude Code, Codex) okuması
+> **Türkçe not:** Bu dosya yapay zeka ajanının (Claude Code, Codex) okuması
 > için yazıldı. Kendin kuracaksan README.md'deki "Elle kurulum" bölümüne bak.
 > Ajana şunu söylemen yeterli: "KURULUM.md dosyasını oku ve Dijital Beyin'i bu
 > klasöre kur, var olan dosyalarıma dokunma."
@@ -18,7 +18,11 @@ Turkish). Never ask for API keys, tokens or passwords; the kit needs none.
 2. **Pick the target.** The target (`HEDEF`) is the folder this session was
    opened in. Look at it:
    - If it contains `.beyin/kurulum.json`, it is already a vault; reinstalling
-     is safe and only refreshes system files.
+     is safe and only refreshes system files. A vault from version 1.x keeps
+     its file names (`ben-kimim.md`, `guncel-durum.md`, `aktif-projem.md`,
+     `verdigim-kararlar.md`). The installer adds only missing files and never
+     adds a 2.0 file whose 1.x equivalent exists, so usually only
+     `04-Tuzaklar.md` and `05-Calisma-Tarzim.md` are added.
    - If it is empty, continue.
    - If it is not empty and not a vault, tell the user what is in it and ask
      before continuing. Existing files are never overwritten, but the user
@@ -62,13 +66,16 @@ Turkish). Never ask for API keys, tokens or passwords; the kit needs none.
      trust it (Codex never loads `.codex/` hooks from an untrusted folder).
      Then type `/hooks` and trust the three Dijital Beyin hooks. The installer
      cannot skip either step.
-   - The four files in `beynim/` are theirs to fill; offer to fill them
-     together.
+   - The five files in `beynim/` are theirs to fill: `01-Kimlik.md`,
+     `02-Guncel-Durum.md`, `03-Kararlar.md`, `04-Tuzaklar.md` and
+     `05-Calisma-Tarzim.md`. Offer to fill them together.
 
 8. **Verify in the new session.** Ask the user to say something like
-   "Bir karar kaydet: ana rengim koyu yeşil." The agent should append a dated
-   line to `beynim/verdigim-kararlar.md`. Then, in another new session, ask
-   "Ana rengim neydi?" and confirm the answer comes from the file.
+   "Bir karar kaydet: ana rengim koyu yeşil." An explicit request counts as
+   approval, so the agent should append a dated line to
+   `beynim/03-Kararlar.md` (`beynim/verdigim-kararlar.md` in a 1.x vault).
+   Then, in another new session, ask "Ana rengim neydi?" and confirm the
+   answer comes from the file.
 
 Do not modify `sistem/`, `beyin.mjs` or the text between the
 `dijital-beyin` markers in `CLAUDE.md`, `AGENTS.md` and `.gitignore`; they are

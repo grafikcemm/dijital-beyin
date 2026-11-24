@@ -16,7 +16,10 @@ jobs:
         node: [20, 22]
     runs-on: ${{ matrix.os }}
     steps:
+      # Tam geçmiş ve etiketler: yükseltme testi gerçek v1.0.2 ağacını etiketten çıkarır.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}

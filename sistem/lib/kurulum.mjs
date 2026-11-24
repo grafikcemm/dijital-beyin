@@ -14,6 +14,21 @@ const YEDEK_SAKLA = 3;
 // Kullanıcı klasörleri: onar eksik olanı boş olarak yeniden oluşturur, içine dokunmaz.
 const KULLANICI_KLASORLERI = Object.freeze(['beynim', 'notlar', 'gunluk', 'gelen-kutusu']);
 
+// 2.x şablonu → 1.x karşılığı. 1.x kasası kendi adlarını korur: karşılığı varsa 2.x şablonu
+// eklenmez (aynı not iki adla durmasın). Karşılığı olmayan şablonlar (04, 05) eksikse eklenir.
+const V1_KARSILIGI = Object.freeze({
+  'beynim/01-Kimlik.md': 'beynim/ben-kimim.md',
+  'beynim/02-Guncel-Durum.md': 'beynim/guncel-durum.md',
+  'beynim/03-Kararlar.md': 'beynim/verdigim-kararlar.md',
+});
+
+// Hedefte şablonun yerini tutan dosya: şablonun kendisi ya da 1.x karşılığı; yoksa null.
+function sablonYeriniTutan(kok, rel) {
+  if (existsSync(join(kok, ...rel.split('/')))) return rel;
+  const eski = V1_KARSILIGI[rel];
+  return eski && existsSync(join(kok, ...eski.split('/'))) ? eski : null;
+}
+
 const MD_ISARET = { basla: '<!-- dijital-beyin:basla -->', bitir: '<!-- dijital-beyin:bitir -->' };
 const GITIGNORE_ISARET = { basla: '# dijital-beyin:basla', bitir: '# dijital-beyin:bitir' };
 
@@ -476,7 +491,7 @@ function kullaniciKlasorleriniTamamla(kok, sablon) {
   if (sablon) {
     for (const rel of dosyalariTopla(sablon)) {
       const dosya = join(kok, ...rel.split('/'));
-      if (existsSync(dosya)) continue;
+      if (sablonYeriniTutan(kok, rel)) continue;
       mkdirSync(dirname(dosya), { recursive: true });
       try {
         copyFileSync(join(sablon, ...rel.split('/')), dosya, constants.COPYFILE_EXCL);
@@ -552,7 +567,9 @@ export function kur({ kaynak, hedef, istemciler, plan = false, simdi, uzerineYaz
   const yeniSablonlar = [];
   const korunanlar = [];
   for (const rel of sablonlar) {
-    if (existsSync(join(hedefKok, ...rel.split('/')))) korunanlar.push(rel);
+    // 1.x karşılığı yüzünden atlanan şablon, kullanıcının korunan 1.x dosyası olarak listelenir.
+    const yerini = sablonYeriniTutan(hedefKok, rel);
+    if (yerini) korunanlar.push(yerini);
     else yeniSablonlar.push(rel);
   }
 
